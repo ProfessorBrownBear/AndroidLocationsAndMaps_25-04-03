@@ -1,0 +1,263 @@
+AndroidManifest.xml
+
+<manifest package="com.example.lab1locationcoordinates"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Declare permission for fine location (coarse is implicitly granted with fine) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <application
+        android:allowBackup="true"
+        android:label="Lab1LocationCoordinates"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar">
+        <!-- Main activity declaration -->
+        <activity android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+
+####
+
+MainActivity.kt
+
+package com.example.lab1locationcoordinates
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.os.Looper
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.example.lab1locationcoordinates.databinding.ActivityMainBinding
+import com.google.android.gms.location.*
+
+class MainActivity : AppCompatActivity() {
+
+    // View Binding instance
+    private lateinit var binding: ActivityMainBinding
+
+    // FusedLocationProviderClient instance for location updates
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    // LocationCallback to receive continuous location updates
+    private lateinit var locationCallback: LocationCallback
+
+    // Configuration for location updates interval and priority
+    private val locationRequest = LocationRequest.create().apply {
+        interval = 5000L            // Regular updates every 5 seconds
+        fastestInterval = 2000L     // Fastest updates interval every 2 seconds
+        priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+    }
+
+    // Permission request launcher (new recommended API)
+    private val locationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                startLocationUpdates()
+            } else {
+                binding.tvLatitude.text = "Latitude: permission denied"
+                binding.tvLongitude.text = "Longitude: permission denied"
+            }
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Check permissions explicitly when the activity starts
+        checkLocationPermission()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (this::locationCallback.isInitialized) {
+            startLocationUpdates()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (this::locationCallback.isInitialized) {
+            stopLocationUpdates()
+        }
+    }
+
+    /**
+     * Checks if ACCESS_FINE_LOCATION permission is granted. If not, requests it.
+     */
+    private fun checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startLocationUpdates()
+        } else {
+            // Request permission explicitly
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    /**
+     * Starts location updates if permission has been granted.
+     */
+    @SuppressLint("MissingPermission") // Explicitly checked already
+    private fun startLocationUpdates() {
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                val location = locationResult.lastLocation
+                if (location != null) {
+                    updateLocationUI(location.latitude, location.longitude)
+                } else {
+                    binding.tvLatitude.text = "Latitude: unknown"
+                    binding.tvLongitude.text = "Longitude: unknown"
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
+    }
+
+    /**
+     * Stops receiving location updates (saves battery).
+     */
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+
+    /**
+     * Updates the TextViews with new latitude and longitude.
+     */
+    private fun updateLocationUI(latitude: Double, longitude: Double) {
+        binding.tvLatitude.text = "Latitude: $latitude"
+        binding.tvLongitude.text = "Longitude: $longitude"
+    }
+}
+
+###
+
+
+activity_main.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvLatitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Latitude: "
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:paddingBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tvLongitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Longitude: "
+        android:textAppearance="?attr/textAppearanceHeadline6"/>
+
+</LinearLayout>
+
+###
+
+Build Gradle  Project Level
+
+// Project-level Gradle configuration (Kotlin DSL)
+plugins {
+    id("com.android.application") version "8.9.1" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.10" apply false
+}
+
+###
+
+Build Gradle  Module-Level
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "com.example.lab1locationcoordinates"  // your package name
+    compileSdk = 34  // API level for compilation (use latest stable)
+
+    defaultConfig {
+        applicationId = "com.example.lab1locationcoordinates"
+        minSdk = 23
+        targetSdk = 34  // Target the latest API level (or as required)
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17  // Java compatibility (if using Java 17)
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    // Enable ViewBinding feature
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+    // AndroidX Core and AppCompat (usually added by default for new projects)
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.9.0")
+
+    // Play Services Location library for FusedLocationProviderClient
+    implementation("com.google.android.gms:play-services-location:21.3.0") }
+
+###
+
+
+settings.gradle.kts
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "lab1locationcoordinates"
+include(":app")
+
+####
+
+
