@@ -225,3 +225,172 @@ activity_main.xml
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+### Next Steps:  Add a Blue Dot to show the device's current location
+
+Now take everything you did and amplify it so that a BLUE DOT displays on the map to show device location: 
+We will updated the previous files only as needed 
+
+Below are the fully updated versions of MainActivity.kt and activity_main.xml to explicitly enable the Blue Dot (current device location indicator) on your Google Map:
+
+✅ Updated activity_main.xml
+ 
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <fragment
+        android:id="@+id/mapFragment"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+(No further changes were needed here since it was already correct.)
+
+✅ Fully Updated MainActivity.kt
+Here's the complete and finalized Kotlin code explicitly set up to display the blue dot on the Google Map indicating the current device location:
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+
+class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+
+    private lateinit var googleMap: GoogleMap
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.mapFragment) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+    }
+
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+        setupMap()
+    }
+
+    private fun setupMap() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            googleMap.isMyLocationEnabled = true // This enables the Blue Dot
+            googleMap.uiSettings.isMyLocationButtonEnabled = true
+            googleMap.uiSettings.isZoomControlsEnabled = true
+
+            getDeviceLocation()
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                setupMap()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Location permission denied. Unable to show current location.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun getDeviceLocation() {
+        try {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    if (location != null) {
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        googleMap.animateCamera(
+                            CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f)
+                        )
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "Current location not available. Ensure GPS is enabled.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        } catch (e: SecurityException) {
+            Toast.makeText(
+                this,
+                "SecurityException: ${e.message}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+}
+✅ App-level Gradle (build.gradle.kts)
+No additional changes required. Your previously updated gradle file already correctly includes the necessary dependencies:
+
+
+implementation("com.google.android.gms:play-services-maps:19.1.0")
+implementation("com.google.android.gms:play-services-location:21.0.1")
+
+⚠️ What this achieves:
+Blue Dot: explicitly enabled by:
+
+googleMap.isMyLocationEnabled = true
+Location button: allows re-centering on current location.
+
+Zoom Controls: explicitly enabled for easier testing and usability.
+
+After applying these updates, your app will correctly display a Google Map with the blue dot showing your current device location once location permissions are granted.
