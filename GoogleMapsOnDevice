@@ -572,6 +572,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 }
 
+### Extend the Code: Study Lab Exercise: 
+https://coda.io/@peter-sigurdson/extending-the-blue-dot-google-maps-lab
+
+
 
 ################################################################
 
